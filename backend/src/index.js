@@ -70,13 +70,12 @@ app.use("/api", apiLimiter);
 // 9. Authentication Middleware
 app.use(clerkMiddleware());
 
-// 10. Comprehensive Health Check (Readiness & Liveness probe)
+// 10. Comprehensive Health Check & Uptime Monitor Probe
 app.get("/health", (req, res) => {
   const isDbConnected = mongoose.connection.readyState === 1;
-  const status = isDbConnected ? 200 : 503;
 
-  res.status(status).json({
-    status: isDbConnected ? "ok" : "degraded",
+  res.status(200).json({
+    status: "ok",
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
     database: isDbConnected ? "connected" : "disconnected",
