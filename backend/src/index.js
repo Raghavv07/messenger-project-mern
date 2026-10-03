@@ -83,6 +83,15 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Root welcome probe (prevents 404 when visiting the base URL in a browser)
+app.get("/", (req, res) => {
+  res.status(200).json({
+    message: "🚀 Messenger Backend API is up and running!",
+    health: "/health",
+    status: "ok",
+  });
+});
+
 // 11. Application Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
