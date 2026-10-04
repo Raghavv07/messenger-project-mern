@@ -7,8 +7,9 @@ import { UserButton } from "@clerk/react";
 import { dark } from "@clerk/themes";
 import { useTheme } from "../../context/theme";
 
-import { SearchField, Tabs } from "@heroui/react";
-import { MessageSquareIcon, UsersIcon } from "lucide-react";
+import { Button, SearchField, Tabs } from "@heroui/react";
+import { LogOutIcon, MessageSquareIcon, UsersIcon } from "lucide-react";
+import toast from "react-hot-toast";
 import { ConversationRow } from "./ConversationRow";
 
 function mapUserForList(user, onlineUsers) {
@@ -51,7 +52,18 @@ function ChatSidebar() {
     })),
   );
 
-  const onlineUsers = useAuthStore((state) => state.onlineUsers);
+  const { authUser, logoutGuest, onlineUsers } = useAuthStore(
+    useShallow((state) => ({
+      authUser: state.authUser,
+      logoutGuest: state.logoutGuest,
+      onlineUsers: state.onlineUsers,
+    })),
+  );
+
+  const handleGuestLogout = () => {
+    logoutGuest();
+    toast.success("Guest session ended.");
+  };
 
   const { activeConversationId, isLargeScreen } = useSelectedConversation();
 
@@ -82,14 +94,43 @@ function ChatSidebar() {
           <p className="flex-1 truncate text-lg font-bold tracking-tight sm:text-[22px]">
             {APP_NAME}
           </p>
-          <UserButton
-            appearance={{
-              baseTheme: theme === "dark" ? dark : undefined,
-              elements: {
-                avatarBox: "size-8",
-              },
-            }}
-          />
+          {authUser?.isGuest ? (
+            <div className="flex items-center gap-1.5">
+              <div
+                className="relative flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-accent/10 overflow-hidden"
+                title={`${authUser.fullName} (Guest)`}
+              >
+                <img
+                  src={
+                    authUser.profilePic ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.fullName)}&background=0D8ABC&color=fff`
+                  }
+                  alt={authUser.fullName}
+                  className="size-full object-cover"
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                isIconOnly
+                aria-label="Exit guest session"
+                title="Exit guest session"
+                className="size-8 rounded-xl text-muted hover:text-destructive hover:bg-destructive/10 transition-colors"
+                onPress={handleGuestLogout}
+              >
+                <LogOutIcon className="size-4" />
+              </Button>
+            </div>
+          ) : (
+            <UserButton
+              appearance={{
+                baseTheme: theme === "dark" ? dark : undefined,
+                elements: {
+                  avatarBox: "size-8",
+                },
+              }}
+            />
+          )}
         </div>
       </div>
 

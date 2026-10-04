@@ -12,6 +12,8 @@ export const useAuthStore = create((set, get) => ({
   onlineUsers: [],
   socket: null,
   isSocketConnected: false,
+  isLoggingInGuest: false,
+  guestToken: typeof window !== "undefined" ? localStorage.getItem("messenger_guest_token") : null,
 
   checkAuth: async () => {
     set({ isCheckingAuth: true });
@@ -23,13 +25,54 @@ export const useAuthStore = create((set, get) => ({
       get().connectSocket(res.data);
     } catch (error) {
       console.error("Error in checkAuth:", error);
-      set({ authUser: null });
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("messenger_guest_token");
+      }
+      set({ authUser: null, guestToken: null });
     } finally {
       set({ isCheckingAuth: false });
     }
   },
 
+  loginAsGuest: async (fullName) => {
+    set({ isLoggingInGuest: true });
+    try {
+      const res = await axiosInstance.post("/auth/guest-login", { fullName });
+      const { user, token } = res.data;
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("messenger_guest_token", token);
+      }
+
+      set({
+        authUser: user,
+        guestToken: token,
+        isCheckingAuth: false,
+      });
+
+      get().connectSocket(user);
+      return { success: true, user };
+    } catch (error) {
+      const msg = error.response?.data?.message || "Failed to join as guest";
+      return { success: false, message: msg };
+    } finally {
+      set({ isLoggingInGuest: false });
+    }
+  },
+
+  logoutGuest: () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("messenger_guest_token");
+    }
+    set({ authUser: null, guestToken: null, onlineUsers: [] });
+    get().disconnectSocket();
+  },
+
   clearAuth: () => {
+    // If user has an active guest session, don't clear auth
+    if (typeof window !== "undefined" && localStorage.getItem("messenger_guest_token")) {
+      return;
+    }
     set({ authUser: null, isCheckingAuth: false, onlineUsers: [] });
     get().disconnectSocket();
   },

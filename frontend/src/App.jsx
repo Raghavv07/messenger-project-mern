@@ -14,10 +14,12 @@ import AppToaster from "./components/AppToaster";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 function App() {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded: isClerkLoaded } = useAuth();
 
-  const { clearAuth, checkAuth, isCheckingAuth } = useAuthStore(
+  const { authUser, guestToken, clearAuth, checkAuth, isCheckingAuth } = useAuthStore(
     useShallow((state) => ({
+      authUser: state.authUser,
+      guestToken: state.guestToken,
       clearAuth: state.clearAuth,
       checkAuth: state.checkAuth,
       isCheckingAuth: state.isCheckingAuth,
@@ -25,13 +27,20 @@ function App() {
   );
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isClerkLoaded) return;
 
-    if (isSignedIn) checkAuth();
-    else clearAuth();
-  }, [checkAuth, clearAuth, isLoaded, isSignedIn]);
+    if (isSignedIn) {
+      checkAuth();
+    } else if (guestToken || (typeof window !== "undefined" && localStorage.getItem("messenger_guest_token"))) {
+      checkAuth();
+    } else {
+      clearAuth();
+    }
+  }, [checkAuth, clearAuth, isClerkLoaded, isSignedIn, guestToken]);
 
-  if (!isLoaded || (isSignedIn && isCheckingAuth)) return <PageLoader />;
+  const isAuthenticated = Boolean(isSignedIn || (authUser && (authUser.isGuest || authUser._id)));
+
+  if (!isClerkLoaded || ((isSignedIn || guestToken) && isCheckingAuth)) return <PageLoader />;
 
   return (
     <ThemeProvider>
@@ -39,14 +48,14 @@ function App() {
         <ErrorBoundary>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/" element={isSignedIn ? <ChatPage /> : <Navigate to="/auth" replace />} />
+              <Route path="/" element={isAuthenticated ? <ChatPage /> : <Navigate to="/auth" replace />} />
               <Route
                 path="/auth"
-                element={!isSignedIn ? <AuthPage /> : <Navigate to="/" replace />}
+                element={!isAuthenticated ? <AuthPage /> : <Navigate to="/" replace />}
               />
               <Route
                 path="*"
-                element={<Navigate to={isSignedIn ? "/" : "/auth"} replace />}
+                element={<Navigate to={isAuthenticated ? "/" : "/auth"} replace />}
               />
             </Routes>
           </Suspense>

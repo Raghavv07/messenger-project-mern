@@ -12,17 +12,24 @@ export const axiosInstance = axios.create({
   withCredentials: true,
 });
 
-// Automatically inject Clerk JWT session token into outbound requests
+// Automatically inject Clerk JWT session token or Guest token into outbound requests
 axiosInstance.interceptors.request.use(async (config) => {
   try {
+    let token = null;
+
     if (typeof window !== "undefined" && window.Clerk?.session) {
-      const token = await window.Clerk.session.getToken();
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+      token = await window.Clerk.session.getToken();
+    }
+
+    if (!token && typeof window !== "undefined") {
+      token = localStorage.getItem("messenger_guest_token");
+    }
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
   } catch (error) {
-    console.warn("Could not attach Clerk token to request:", error);
+    console.warn("Could not attach auth token to request:", error);
   }
   return config;
 });
